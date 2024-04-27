@@ -1,9 +1,14 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:groceryjam/features/authentication/view/signinpage.dart';
+import 'package:groceryjam/features/mainscreen/homepage.dart';
 import 'package:groceryjam/utils/colors.dart';
 import 'package:groceryjam/widgets/authentication/authbutton.dart';
 import 'package:groceryjam/widgets/authentication/authtextfield.dart';
 import 'package:groceryjam/widgets/authentication/socialauthbutton.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -12,8 +17,65 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
+final supabase = Supabase.instance.client;
+
 class _LoginPageState extends State<LoginPage> {
   bool valuefirst = false;
+  @override
+  void initState() {
+    _setupAuthListener();
+    super.initState();
+  }
+
+  void _setupAuthListener() {
+    supabase.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
+      if (event == AuthChangeEvent.signedIn) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const HomeScreen(),
+          ),
+        );
+      }
+    });
+  }
+
+  Future<AuthResponse> _googleSignIn() async {
+    /// TODO: update the Web client ID with your own.
+    ///
+    /// Web Client ID that you registered with Google Cloud.
+    const webClientId = 'my-web.apps.googleusercontent.com';
+
+    /// TODO: update the iOS client ID with your own.
+    ///
+    /// iOS Client ID that you registered with Google Cloud.
+    const iosClientId = 'my-ios.apps.googleusercontent.com';
+
+    // Google sign in on Android will work without providing the Android
+    // Client ID registered on Google Cloud.
+
+    final GoogleSignIn googleSignIn = GoogleSignIn(
+      clientId: iosClientId,
+      serverClientId: webClientId,
+    );
+    final googleUser = await googleSignIn.signIn();
+    final googleAuth = await googleUser!.authentication;
+    final accessToken = googleAuth.accessToken;
+    final idToken = googleAuth.idToken;
+
+    if (accessToken == null) {
+      throw 'No Access Token found.';
+    }
+    if (idToken == null) {
+      throw 'No ID Token found.';
+    }
+
+    return supabase.auth.signInWithIdToken(
+      provider: OAuthProvider.google,
+      idToken: idToken,
+      accessToken: accessToken,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -115,7 +177,9 @@ class _LoginPageState extends State<LoginPage> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                 const AuthButton(text: 'Sign In',),
+                  const AuthButton(
+                    text: 'Sign In',
+                  ),
                   const SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -153,14 +217,17 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Row(
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      SocialAuthButton(
-                        imagePath: 'assets/images/google.png',
+                      GestureDetector(
+                        onTap: _googleSignIn,
+                        child: const SocialAuthButton(
+                          imagePath: 'assets/images/google.png',
+                        ),
                       ),
-                      SizedBox(width: 20),
-                      SocialAuthButton(
+                      const SizedBox(width: 20),
+                      const SocialAuthButton(
                         imagePath: 'assets/images/facebook.png',
                       ),
                     ],
