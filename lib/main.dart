@@ -24,6 +24,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   final supabase = Supabase.instance.client;
 
+  // variable to check if user is logged in
   bool isLoggedIn = false;
   String userType = '';
 
